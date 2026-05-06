@@ -32,9 +32,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 
 /* ── Summary ── */
 .summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:16px 20px}
-.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 12px}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 8px}
 .sum-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-.sum-amount{font-size:13px;font-weight:700;line-height:1.2}
+.sum-amount{font-size:13px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sum-card.balance .sum-amount{color:var(--accent)}
 .sum-card.expense-card .sum-amount{color:var(--expense)}
 .sum-card.income-card .sum-amount{color:var(--income)}
@@ -84,12 +84,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .chart-wrap{background:var(--surface);border-radius:var(--r);padding:16px;border:1px solid var(--border)}
 /* donut breakdown table */
 .donut-breakdown{margin-top:16px;border-top:1px solid var(--border);padding-top:14px}
-.donut-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
+.donut-row{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--border)}
 .donut-row:last-child{border-bottom:none}
 .donut-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
-.donut-cat{font-size:13px;font-weight:700;flex:1}
-.donut-pct{font-size:12px;color:var(--text3);width:44px;text-align:right}
-.donut-amt{font-size:13px;font-weight:700;width:72px;text-align:right}
+.donut-cat{font-size:12px;font-weight:700;width:60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.donut-track{flex:1;height:6px;background:var(--surface2);border-radius:99px;overflow:hidden;min-width:0}
+.donut-track-fill{height:100%;border-radius:99px}
+.donut-pct{font-size:11px;color:var(--text3);width:42px;text-align:right;flex-shrink:0;white-space:nowrap}
+.donut-amt{font-size:12px;font-weight:700;width:88px;text-align:right;flex-shrink:0;white-space:nowrap}
 /* bar rows */
 .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .bar-label{font-size:11px;color:var(--text2);width:52px;flex-shrink:0}
@@ -494,12 +496,10 @@ function renderChart() {
   const tExp = sExp.reduce((s,[,v])=>s+v, 0);
   const tInc = sInc.reduce((s,[,v])=>s+v, 0);
 
-  // 6-month trend
+  // 1월~12월 고정 추이 (현재 선택 연도)
   const tL=[],tE=[],tI=[];
-  for (let i=5; i>=0; i--) {
-    let m=S.month-i, y=S.year;
-    while(m<0){m+=12;y--;}
-    const k=`${y}-${String(m+1).padStart(2,'0')}`;
+  for (let m=0; m<=11; m++) {
+    const k=`${S.year}-${String(m+1).padStart(2,'0')}`;
     const mT=S.transactions.filter(t=>t.date.startsWith(k));
     tL.push(MONTHS[m]);
     tE.push(mT.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0));
@@ -520,7 +520,7 @@ function renderChart() {
       expBreakH += `<div class="donut-row">
         <div class="donut-dot" style="background:${c.color}"></div>
         <div class="donut-cat">${c.icon} ${cat}</div>
-        <div class="bar-track" style="flex:1;margin:0 8px;height:6px"><div class="bar-fill" style="width:${mx>0?amt/mx*100:0}%;background:${c.color}"></div></div>
+        <div class="donut-track"><div class="donut-track-fill" style="width:${mx>0?amt/mx*100:0}%;background:${c.color}"></div></div>
         <div class="donut-pct">${pct}%</div>
         <div class="donut-amt">${fmt(amt)}</div>
       </div>`;
@@ -537,7 +537,7 @@ function renderChart() {
       incBreakH += `<div class="donut-row">
         <div class="donut-dot" style="background:${c.color}"></div>
         <div class="donut-cat">${c.icon} ${cat}</div>
-        <div class="bar-track" style="flex:1;margin:0 8px;height:6px"><div class="bar-fill" style="width:${mx>0?amt/mx*100:0}%;background:${c.color}"></div></div>
+        <div class="donut-track"><div class="donut-track-fill" style="width:${mx>0?amt/mx*100:0}%;background:${c.color}"></div></div>
         <div class="donut-pct">${pct}%</div>
         <div class="donut-amt">${fmt(amt)}</div>
       </div>`;
@@ -574,7 +574,7 @@ function renderChart() {
       </div>
     </div>` : ''}
     <div class="chart-section">
-      <div class="chart-title">월별 수입 / 지출 추이 (6개월)</div>
+      <div class="chart-title">${S.year}년 월별 수입 / 지출 추이</div>
       <div class="chart-wrap"><canvas id="barChart" height="200"></canvas></div>
     </div>
     ${!sExp.length && !sInc.length ? `<div class="empty-state"><div class="empty-icon">📊</div>이번 달 내역이 없습니다</div>` : ''}
@@ -627,7 +627,7 @@ function renderChart() {
           },
           scales: {
             x: { grid:{display:false}, ticks:{font:{family:NG}} },
-            y: { grid:{color:'#F0EDE8'}, ticks:{callback:v=>(v/10000)+'만', font:{family:NG}} }
+            y: { min:0, grid:{color:'#F0EDE8'}, ticks:{callback:v=>(v/10000)+'만', font:{family:NG}} }
           },
           animation: {duration:600}
         }
@@ -688,12 +688,10 @@ function renderAsset() {
   if (cashTotal>0) allocData.push({label:'현금/예금',amount:cashTotal, color:'#2D6A4F'});
   const allocTotal = allocData.reduce((s,a)=>s+a.amount, 0);
 
-  // Dividend trend
+  // 배당금 추이 1월~12월 고정
   const divTrend=[], divLabels=[];
-  for (let i=5; i>=0; i--) {
-    let m=S.month-i, y=S.year;
-    while(m<0){m+=12;y--;}
-    const k=`${y}-${String(m+1).padStart(2,'0')}`;
+  for (let m=0; m<=11; m++) {
+    const k=`${S.year}-${String(m+1).padStart(2,'0')}`;
     divLabels.push(MONTHS[m]);
     divTrend.push(S.dividends.filter(d=>d.date.startsWith(k)).reduce((s,d)=>s+d.amount,0));
   }
@@ -705,7 +703,7 @@ function renderAsset() {
     allocBreakH += `<div class="donut-row">
       <div class="donut-dot" style="background:${a.color}"></div>
       <div class="donut-cat">${a.label}</div>
-      <div class="bar-track" style="flex:1;margin:0 8px;height:6px"><div class="bar-fill" style="width:${pct}%;background:${a.color}"></div></div>
+      <div class="donut-track"><div class="donut-track-fill" style="width:${pct}%;background:${a.color}"></div></div>
       <div class="donut-pct">${pct}%</div>
       <div class="donut-amt">${fmtB(a.amount)}</div>
     </div>`;
@@ -721,7 +719,7 @@ function renderAsset() {
       stockBreakH += `<div class="donut-row">
         <div class="donut-dot" style="background:#1565C0"></div>
         <div class="donut-cat">${st.ticker} ${st.name}</div>
-        <div class="bar-track" style="flex:1;margin:0 8px;height:6px"><div class="bar-fill" style="width:${val/mx*100}%;background:#1565C0"></div></div>
+        <div class="donut-track"><div class="donut-track-fill" style="width:${val/mx*100}%;background:#1565C0"></div></div>
         <div class="donut-pct">${pct}%</div>
         <div class="donut-amt">${fmtB(val)}</div>
       </div>`;
@@ -737,7 +735,7 @@ function renderAsset() {
       cashBreakH += `<div class="donut-row">
         <div class="donut-dot" style="background:#2D6A4F"></div>
         <div class="donut-cat">${a.name}</div>
-        <div class="bar-track" style="flex:1;margin:0 8px;height:6px"><div class="bar-fill" style="width:${a.amount/mx*100}%;background:#2D6A4F"></div></div>
+        <div class="donut-track"><div class="donut-track-fill" style="width:${a.amount/mx*100}%;background:#2D6A4F"></div></div>
         <div class="donut-pct">${pct}%</div>
         <div class="donut-amt">${fmtB(a.amount)}</div>
       </div>`;

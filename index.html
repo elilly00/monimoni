@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Moni</title>
+  <title>MONI</title>
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -37,12 +37,18 @@
       -webkit-tap-highlight-color: transparent
     }
 
+    html {
+      overflow-x: hidden
+    }
+
     body {
       font-family: var(--sans);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      overscroll-behavior: none
+      overscroll-behavior: none;
+      overflow-x: hidden;
+      width: 100%
     }
 
     #app {
@@ -188,6 +194,88 @@
     /* ── Content ── */
     .content {
       padding: 16px 20px
+    }
+
+
+    /* ── Filter / Sort Bar ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      gap: 8px;
+    }
+
+    /* 필터 세그먼트: 전체 / 지출 / 수입 */
+    .filter-seg {
+      display: flex;
+      background: var(--surface2);
+      border-radius: 99px;
+      padding: 3px;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .filter-seg-btn {
+      flex: 1;
+      padding: 6px 0;
+      border: none;
+      border-radius: 99px;
+      background: none;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text3);
+      cursor: pointer;
+      font-family: var(--sans);
+      transition: all .18s;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .filter-seg-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .10);
+    }
+
+    .filter-seg-btn.active.expense {
+      color: var(--expense);
+    }
+
+    .filter-seg-btn.active.income {
+      color: var(--income);
+    }
+
+    /* 날짜 정렬 토글 버튼 */
+    .sort-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 7px 12px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text2);
+      cursor: pointer;
+      font-family: var(--sans);
+      transition: all .15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .sort-toggle:hover {
+      border-color: var(--text2);
+    }
+
+    .sort-toggle .sort-arrow {
+      font-size: 13px;
+      transition: transform .2s;
+    }
+
+    .sort-toggle.asc .sort-arrow {
+      transform: rotate(180deg);
     }
 
     /* ── Transaction List ── */
@@ -770,7 +858,8 @@
       justify-content: center;
       opacity: 0;
       pointer-events: none;
-      transition: opacity .25s
+      transition: opacity .25s;
+      overflow: hidden
     }
 
     .modal-overlay.open {
@@ -787,7 +876,8 @@
       transform: translateY(100%);
       transition: transform .3s cubic-bezier(.4, 0, .2, 1);
       max-height: 92vh;
-      overflow-y: auto
+      overflow-y: auto;
+      overflow-x: hidden
     }
 
     .modal-overlay.open .modal {
@@ -874,7 +964,8 @@
       font-family: var(--sans);
       color: var(--text);
       outline: none;
-      transition: border-color .15s
+      transition: border-color .15s;
+      box-sizing: border-box
     }
 
     .form-input:focus {
@@ -883,7 +974,7 @@
 
     .form-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px
     }
 
@@ -984,7 +1075,7 @@
     /* ── Category Grid ── */
     .cat-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px
     }
 
@@ -1048,7 +1139,7 @@
 
     .emoji-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 8px;
       margin-bottom: 4px
     }
@@ -1092,7 +1183,7 @@
   <div id="app">
     <div class="header">
       <div class="header-top">
-        <div class="app-title">💵 가계부</div>
+        <div class="app-title">💵 MONI</div>
         <div class="month-nav" id="monthNavWrap">
           <button class="month-btn" onclick="changeMonth(-1)">‹</button>
           <div class="month-label" id="monthLabel"></div>
@@ -1126,7 +1217,7 @@
   <button class="fab" onclick="handleFab()">+</button>
 
   <!-- ── Transaction Modal ── -->
-  <div class="modal-overlay" id="txModal">
+  <div class="modal-overlay" id="txModal" onclick="if(event.target===this)closeTxModal()">
     <div class="modal">
       <div class="modal-handle"></div>
       <div class="modal-title" id="txModalTitle">내역 추가</div>
@@ -1149,7 +1240,7 @@
   </div>
 
   <!-- ── New Category Modal ── -->
-  <div class="modal-overlay" id="newCatModal">
+  <div class="modal-overlay" id="newCatModal" onclick="if(event.target===this)closeNewCatModal()">
     <div class="modal">
       <div class="modal-handle"></div>
       <div class="modal-title">새 카테고리 추가</div>
@@ -1172,7 +1263,7 @@
   </div>
 
   <!-- ── Budget Modal ── -->
-  <div class="modal-overlay" id="budgetModal">
+  <div class="modal-overlay" id="budgetModal" onclick="if(event.target===this)closeBudgetModal()">
     <div class="modal">
       <div class="modal-handle"></div>
       <div class="modal-title">예산 설정</div>
@@ -1187,7 +1278,7 @@
   </div>
 
   <!-- ── Asset Modal ── -->
-  <div class="modal-overlay" id="assetModal">
+  <div class="modal-overlay" id="assetModal" onclick="if(event.target===this)closeAssetModal()">
     <div class="modal">
       <div class="modal-handle"></div>
       <div class="modal-title" id="assetModalTitle">자산 추가</div>
@@ -1247,7 +1338,7 @@
   </div>
 
   <!-- ── Detail Modal ── -->
-  <div class="modal-overlay" id="detailModal">
+  <div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeDetailModal()">
     <div class="modal">
       <div class="modal-handle"></div>
       <div class="modal-title" id="detailTitle"></div>
@@ -1287,6 +1378,7 @@
       transactions: [], budgets: {}, stocks: [], dividends: [], cashAssets: [], customCat: {},
       activeTab: 'list', txType: 'expense', txCat: '식비', budgetCat: '식비', assetType: 'stock',
       editingTxId: null, editingAssetType: null, editingAssetId: null,
+      sortKey: 'date-desc', filterKey: 'all',
       _ncEmoji: '🏋️', _ncGridId: '', _ncCb: null,
     };
 
@@ -1374,32 +1466,84 @@
     // ══════════════════════════════════════════
     //  LIST TAB
     // ══════════════════════════════════════════
+    // 필터 변경 (전체 / 지출 / 수입)
+    function setFilter(key) {
+      S.filterKey = key;
+      renderList();
+    }
+    // 날짜 정렬 토글
+    function toggleSort() {
+      S.sortKey = S.sortKey === 'date-desc' ? 'date-asc' : 'date-desc';
+      renderList();
+    }
+
     function renderList() {
-      const txs = curTxs().sort((a, b) => b.date.localeCompare(a.date));
       const el = document.getElementById('mainContent');
-      if (!txs.length) {
+      const allTxs = curTxs();
+
+      // 빈 상태 (필터 적용 전 전체 기준)
+      if (!allTxs.length) {
         el.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div>이번 달 내역이 없습니다<br><small style="display:block;margin-top:8px;color:var(--text3)">+ 버튼으로 추가해보세요</small></div>`;
         return;
       }
+
+      // 필터 적용
+      const fk = S.filterKey || 'all';
+      let txs = fk === 'expense' ? allTxs.filter(t => t.type === 'expense')
+        : fk === 'income' ? allTxs.filter(t => t.type === 'income')
+          : allTxs;
+
+      // 날짜 정렬
+      const asc = S.sortKey === 'date-asc';
+      txs = txs.slice().sort((a, b) => asc ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
+
+      // ── 필터 바 ──
+      const filterBar = `
+        <div class="filter-bar">
+          <div class="filter-seg">
+            <button class="filter-seg-btn${fk === 'all' ? ' active' : ''}" onclick="setFilter('all')">전체</button>
+            <button class="filter-seg-btn expense${fk === 'expense' ? ' active' : ''}" onclick="setFilter('expense')">지출</button>
+            <button class="filter-seg-btn income${fk === 'income' ? ' active' : ''}" onclick="setFilter('income')">수입</button>
+          </div>
+          <button class="sort-toggle${asc ? ' asc' : ''}" onclick="toggleSort()">
+            <span>${asc ? '오래된순' : '최신순'}</span>
+            <span class="sort-arrow">↓</span>
+          </button>
+        </div>`;
+
+      // ── 날짜 그룹 리스트 ──
       const g = {};
       txs.forEach(t => { if (!g[t.date]) g[t.date] = []; g[t.date].push(t); });
-      let h = '';
-      Object.entries(g).forEach(([date, items]) => {
-        const [, m, d] = date.split('-');
-        const dn = ['일', '월', '화', '수', '목', '금', '토'][new Date(date).getDay()];
-        const de = items.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-        h += `<div class="date-group"><div class="date-header"><span>${m}월 ${d}일 (${dn})</span><span style="color:var(--expense)">-${fmt(de)}</span></div>`;
-        items.forEach(t => {
-          const c = catOf(t.category);
-          h += `<div class="tx-item" onclick="openTxDetail('${t.id}')">
-        <div class="tx-icon" style="background:${c.color}22">${c.icon}</div>
-        <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-cat">${t.category}</div></div>
-        <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div>
-      </div>`;
+
+      let listH = '';
+      if (!txs.length) {
+        listH = `<div class="empty-state" style="padding:40px 20px"><div class="empty-icon">🔍</div>해당 내역이 없습니다</div>`;
+      } else {
+        Object.entries(g).forEach(([date, items]) => {
+          const [, m, d] = date.split('-');
+          const dn = ['일', '월', '화', '수', '목', '금', '토'][new Date(date).getDay()];
+          const de = items.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+          const di = items.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+          // 날짜 헤더 오른쪽: 필터에 따라 표시
+          const headerRight = fk === 'income'
+            ? `<span style="color:var(--income)">+${fmt(di)}</span>`
+            : fk === 'expense' || de > 0
+              ? `<span style="color:var(--expense)">${de > 0 ? '-' + fmt(de) : ''}</span>`
+              : '';
+          listH += `<div class="date-group"><div class="date-header"><span>${m}월 ${d}일 (${dn})</span>${headerRight}</div>`;
+          items.forEach(t => {
+            const ct = catOf(t.category);
+            listH += `<div class="tx-item" onclick="openTxDetail('${t.id}')">
+              <div class="tx-icon" style="background:${ct.color}22">${ct.icon}</div>
+              <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-cat">${t.category}</div></div>
+              <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div>
+            </div>`;
+          });
+          listH += '</div>';
         });
-        h += '</div>';
-      });
-      el.innerHTML = h;
+      }
+
+      el.innerHTML = filterBar + listH;
     }
 
     // ══════════════════════════════════════════
@@ -1518,7 +1662,8 @@
             },
             options: {
               plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed)}` } } },
-              cutout: '62%', animation: { duration: 600 }
+              cutout: '62%', animation: { duration: 600 },
+              layout: { padding: 10 }
             }
           });
         }
@@ -1532,7 +1677,8 @@
             },
             options: {
               plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed)}` } } },
-              cutout: '62%', animation: { duration: 600 }
+              cutout: '62%', animation: { duration: 600 },
+              layout: { padding: 10 }
             }
           });
         }
@@ -1753,7 +1899,8 @@
             },
             options: {
               plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmtB(c.parsed)}` } } },
-              cutout: '60%', animation: { duration: 500 }
+              cutout: '60%', animation: { duration: 500 },
+              layout: { padding: 10 }
             }
           });
         }

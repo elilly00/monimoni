@@ -109,7 +109,28 @@
       font-size: 15px;
       font-weight: 700;
       min-width: 80px;
-      text-align: center
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+
+    @keyframes monthFlash {
+      0% {
+        color: var(--text);
+      }
+
+      30% {
+        color: #6B6560;
+      }
+
+      100% {
+        color: var(--text);
+      }
+    }
+
+    .month-flash {
+      animation: monthFlash 0.6s ease;
     }
 
     /* ── Summary ── */
@@ -1186,7 +1207,7 @@
         <div class="app-title">💵 MONI</div>
         <div class="month-nav" id="monthNavWrap">
           <button class="month-btn" onclick="changeMonth(-1)">‹</button>
-          <div class="month-label" id="monthLabel"></div>
+          <div class="month-label" id="monthLabel" onclick="goToToday()" title="오늘로 이동"></div>
           <button class="month-btn" onclick="changeMonth(1)">›</button>
         </div>
       </div>
@@ -1421,6 +1442,20 @@
     // ══════════════════════════════════════════
     //  NAVIGATION
     // ══════════════════════════════════════════
+    // 오늘(현재 월)로 이동
+    function goToToday() {
+      const now = new Date();
+      const ty = now.getFullYear();
+      const tm = now.getMonth();
+      if (S.year === ty && S.month === tm) return;
+      S.year = ty;
+      S.month = tm;
+      render();
+      // 클래스로 깜빡임 처리 (모바일 잔류 없음)
+      const el = document.getElementById('monthLabel');
+      el.classList.add('month-flash');
+      setTimeout(() => el.classList.remove('month-flash'), 600);
+    }
     function changeMonth(d) {
       S.month += d;
       if (S.month > 11) { S.month = 0; S.year++; }

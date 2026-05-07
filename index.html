@@ -1587,13 +1587,41 @@
         <div class="form-row">
           <div class="form-group"><label class="form-label">보유 수량 (주)</label><input class="form-input" type="number"
               id="stockQty" placeholder="10" inputmode="decimal"></div>
-          <div class="form-group"><label class="form-label">평균 매수가</label><input class="form-input" type="number"
-              id="stockAvg" placeholder="70000" inputmode="decimal"></div>
         </div>
-        <div class="form-group"><label class="form-label">현재가 (원)</label><input class="form-input" type="number"
-            id="stockCurrent" placeholder="75000" inputmode="decimal">
-          <div class="form-hint">현재가 입력 시 수익률이 자동 계산됩니다</div>
+        <div class="form-group">
+          <label class="form-label">통화</label>
+          <div class="cur-toggle">
+            <button class="cur-btn active" id="stockCurKRW" onclick="setStockCurrency('KRW')">🇰🇷 원 (KRW)</button>
+            <button class="cur-btn" id="stockCurUSD" onclick="setStockCurrency('USD')">🇺🇸 달러 (USD)</button>
+          </div>
         </div>
+        <div class="form-group">
+          <label class="form-label" id="stockAvgLabel">평균 매수가 (원)</label>
+          <input class="form-input" type="number" id="stockAvg" placeholder="70000" inputmode="decimal"
+            oninput="onStockPriceInput()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="stockCurrentLabel">현재가 (원)</label>
+          <input class="form-input" type="number" id="stockCurrent" placeholder="75000" inputmode="decimal"
+            oninput="onStockPriceInput()">
+        </div>
+        <div id="stockRatePreview" style="display:none;margin-top:-8px;margin-bottom:16px;">
+          <div style="background:var(--surface2);border-radius:var(--rs);padding:12px 14px;font-size:13px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:var(--text2)">현재 환율</span>
+              <span id="stockRateText" style="font-weight:700;color:var(--text2)">조회 중...</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+              <span style="color:var(--text2)">평균 매수가 (원환산)</span>
+              <span id="stockAvgKrwPreview" style="font-weight:700;color:var(--text2)">-</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+              <span style="color:var(--text2)">현재가 (원환산)</span>
+              <span id="stockKrwPreview" style="font-weight:700;color:var(--accent)">-</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-hint" style="margin-bottom:16px">현재가 입력 시 수익률이 자동 계산됩니다</div>
       </div>
       <div id="dividendFields" style="display:none">
         <div class="form-group"><label class="form-label">종목명</label><input class="form-input" type="text" id="divName"
@@ -1705,7 +1733,7 @@
       transactions: [], budgets: {}, stocks: [], dividends: [], cashAssets: [], customCat: {},
       activeTab: 'list', txType: 'expense', txCat: '식비', budgetCat: '식비', assetType: 'stock',
       editingTxId: null, editingAssetType: null, editingAssetId: null,
-      divCurrency: 'KRW', usdRate: null,
+      divCurrency: 'KRW', usdRate: null, stockCurrency: 'KRW',
       assetTrendYear: new Date().getFullYear(),
       sortKey: 'date-desc', filterKey: 'all',
       _ncEmoji: '🏋️', _ncGridId: '', _ncCb: null, _ncMode: 'add', _ncOrigName: null, _ncSel: null, _ncEmojiTab: '',
@@ -1819,7 +1847,64 @@
       const raw = parseFloat(document.getElementById('divAmount').value);
       if (!raw || raw <= 0) return null;
       if (S.divCurrency === 'KRW') return raw;
-      if (!S.usdRate) return null; // 환율 미조회
+      if (!S.usdRate) return null;
+      return Math.round(raw * S.usdRate);
+    }
+
+    // ── 주식 통화 ──
+    function setStockCurrency(cur) {
+      S.stockCurrency = cur;
+      document.getElementById('stockCurKRW').classList.toggle('active', cur === 'KRW');
+      document.getElementById('stockCurUSD').classList.toggle('active', cur === 'USD');
+      document.getElementById('stockAvgLabel').textContent = cur === 'USD' ? '평균 매수가 (USD $)' : '평균 매수가 (원)';
+      document.getElementById('stockCurrentLabel').textContent = cur === 'USD' ? '현재가 (USD $)' : '현재가 (원)';
+      document.getElementById('stockAvg').placeholder = cur === 'USD' ? '0.00' : '70000';
+      document.getElementById('stockCurrent').placeholder = cur === 'USD' ? '0.00' : '75000';
+      document.getElementById('stockAvg').value = '';
+      document.getElementById('stockCurrent').value = '';
+      const preview = document.getElementById('stockRatePreview');
+      if (cur === 'USD') {
+        preview.style.display = 'block';
+        fetchStockUsdRate();
+      } else {
+        preview.style.display = 'none';
+      }
+    }
+
+    async function fetchStockUsdRate() {
+      document.getElementById('stockRateText').textContent = '조회 중...';
+      document.getElementById('stockKrwPreview').textContent = '-';
+      document.getElementById('stockAvgKrwPreview').textContent = '-';
+      try {
+        if (!S.usdRate) {
+          const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+          const data = await res.json();
+          S.usdRate = data.rates && data.rates.KRW;
+        }
+        if (!S.usdRate) throw new Error('no rate');
+        document.getElementById('stockRateText').textContent =
+          '1 USD = ' + Math.round(S.usdRate).toLocaleString('ko-KR') + '원';
+        onStockPriceInput();
+      } catch (e) {
+        document.getElementById('stockRateText').textContent = '조회 실패';
+      }
+    }
+
+    function onStockPriceInput() {
+      if (S.stockCurrency !== 'USD' || !S.usdRate) return;
+      const avg = parseFloat(document.getElementById('stockAvg').value);
+      const cur = parseFloat(document.getElementById('stockCurrent').value);
+      document.getElementById('stockAvgKrwPreview').textContent =
+        avg ? '≈ ' + Math.round(avg * S.usdRate).toLocaleString('ko-KR') + '원' : '-';
+      document.getElementById('stockKrwPreview').textContent =
+        cur ? '≈ ' + Math.round(cur * S.usdRate).toLocaleString('ko-KR') + '원' : '-';
+    }
+
+    function getStockPriceKRW(inputId) {
+      const raw = parseFloat(document.getElementById(inputId).value);
+      if (!raw || raw <= 0) return null;
+      if (S.stockCurrency === 'KRW') return raw;
+      if (!S.usdRate) return null;
       return Math.round(raw * S.usdRate);
     }
 
@@ -2345,7 +2430,7 @@
         const cls = gain > 0 ? 'up' : gain < 0 ? 'down' : 'flat';
         stockH += `<div class="stock-card" onclick="openAssetDetail('stock','${st.id}')">
       <div class="stock-top">
-        <div><div class="stock-ticker">${st.name}</div></div>
+        <div><div class="stock-ticker">${st.name}${st.currency === 'USD' ? ' <span style="font-size:10px;background:#E3F2FD;color:#1565C0;padding:2px 6px;border-radius:99px;font-weight:700">USD</span>' : ''}</div></div>
         <div><div class="stock-total">${fmt(val)}</div></div>
       </div>
       <div class="stock-detail-row">
@@ -2859,7 +2944,7 @@
       ['stockName', 'stockQty', 'stockAvg', 'stockCurrent', 'divName', 'divAmount', 'cashName', 'cashAmount'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
       document.getElementById('divDate').value = new Date().toISOString().split('T')[0];
       // 통화 초기화
-      S.divCurrency = 'KRW'; S.usdRate = null;
+      S.divCurrency = 'KRW'; S.usdRate = null; S.stockCurrency = 'KRW';
       if (document.getElementById('curKRW')) {
         document.getElementById('curKRW').classList.add('active');
         document.getElementById('curUSD').classList.remove('active');
@@ -2867,12 +2952,33 @@
         document.getElementById('divAmount').placeholder = '50000';
         document.getElementById('divRatePreview').style.display = 'none';
       }
+      if (document.getElementById('stockCurKRW')) {
+        document.getElementById('stockCurKRW').classList.add('active');
+        document.getElementById('stockCurUSD').classList.remove('active');
+        document.getElementById('stockAvgLabel').textContent = '평균 매수가 (원)';
+        document.getElementById('stockCurrentLabel').textContent = '현재가 (원)';
+        document.getElementById('stockAvg').placeholder = '70000';
+        document.getElementById('stockCurrent').placeholder = '75000';
+        document.getElementById('stockRatePreview').style.display = 'none';
+      }
       if (existing) {
         if (rType === 'stock') {
           document.getElementById('stockName').value = existing.name;
           document.getElementById('stockQty').value = existing.qty;
-          document.getElementById('stockAvg').value = existing.avgPrice;
-          document.getElementById('stockCurrent').value = existing.currentPrice;
+          if (existing.currency === 'USD' && existing.usdAvgPrice) {
+            setStockCurrency('USD');
+            document.getElementById('stockAvg').value = existing.usdAvgPrice;
+            document.getElementById('stockCurrent').value = existing.usdCurrentPrice || '';
+            if (existing.usdRate) {
+              S.usdRate = existing.usdRate;
+              document.getElementById('stockRateText').textContent =
+                '1 USD = ' + Math.round(existing.usdRate).toLocaleString('ko-KR') + '원';
+              onStockPriceInput();
+            }
+          } else {
+            document.getElementById('stockAvg').value = existing.avgPrice;
+            document.getElementById('stockCurrent').value = existing.currentPrice;
+          }
         } else if (rType === 'dividend') {
           document.getElementById('divName').value = existing.name;
           document.getElementById('divAmount').value = existing.amount;
@@ -2914,12 +3020,23 @@
       if (S.assetType === 'stock') {
         const name = document.getElementById('stockName').value.trim();
         const qty = parseFloat(document.getElementById('stockQty').value);
-        const avg = parseFloat(document.getElementById('stockAvg').value);
-        const cur = parseFloat(document.getElementById('stockCurrent').value);
+        const rawAvg = parseFloat(document.getElementById('stockAvg').value);
+        const rawCur = parseFloat(document.getElementById('stockCurrent').value);
         if (!name) { alert('종목명을 입력해주세요'); return; }
         if (!qty || qty <= 0) { alert('수량을 입력해주세요'); return; }
-        if (!avg || avg <= 0) { alert('평균 매수가를 입력해주세요'); return; }
-        if (!cur || cur <= 0) { alert('현재가를 입력해주세요'); return; }
+        if (!rawAvg || rawAvg <= 0) { alert('평균 매수가를 입력해주세요'); return; }
+        if (!rawCur || rawCur <= 0) { alert('현재가를 입력해주세요'); return; }
+        if (S.stockCurrency === 'USD' && !S.usdRate) {
+          alert('USD 환율을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'); return;
+        }
+        const avg = S.stockCurrency === 'USD' ? Math.round(rawAvg * S.usdRate) : rawAvg;
+        const cur = S.stockCurrency === 'USD' ? Math.round(rawCur * S.usdRate) : rawCur;
+        const extraData = {
+          currency: S.stockCurrency,
+          usdRate: S.stockCurrency === 'USD' ? S.usdRate : null,
+          usdAvgPrice: S.stockCurrency === 'USD' ? rawAvg : null,
+          usdCurrentPrice: S.stockCurrency === 'USD' ? rawCur : null,
+        };
         if (isEdit) {
           const idx = S.stocks.findIndex(s => s.id === S.editingAssetId);
           if (idx >= 0) {
@@ -2930,11 +3047,11 @@
             pushHistory(st.priceHistory, cur);
             pushHistory(st.qtyHistory, qty);
             pushHistory(st.avgHistory, avg);
-            S.stocks[idx] = { ...st, name, qty, avgPrice: avg, currentPrice: cur };
+            S.stocks[idx] = { ...st, name, qty, avgPrice: avg, currentPrice: cur, ...extraData };
           }
         } else {
           S.stocks.push({
-            id: uid(), name, qty, avgPrice: avg, currentPrice: cur,
+            id: uid(), name, qty, avgPrice: avg, currentPrice: cur, ...extraData,
             priceHistory: [{ date: today, value: cur }],
             qtyHistory: [{ date: today, value: qty }],
             avgHistory: [{ date: today, value: avg }],
@@ -3024,7 +3141,7 @@
         const gp = cost > 0 ? ((gain / cost) * 100).toFixed(2) : '0.00';
         title = `📈 ${st.name}`;
         body = `<div style="background:var(--surface2);border-radius:var(--rs);padding:16px">
-      ${[['보유 수량', st.qty + '주'], ['평균 매수가', st.avgPrice.toLocaleString() + '원'], ['현재가', st.currentPrice.toLocaleString() + '원'], ['매수 금액', fmt(cost)], ['평가 금액', fmt(val)], ['평가 손익', `<span style="color:${gain >= 0 ? 'var(--sup)' : 'var(--sdown)'};font-weight:700">${gain >= 0 ? '+' : '-'}${fmt(Math.abs(gain))} (${gain >= 0 ? '+' : '-'}${Math.abs(parseFloat(gp)).toFixed(2)}%)</span>`]]
+      ${[['보유 수량', st.qty + '주'], ['평균 매수가', st.avgPrice.toLocaleString() + '원' + (st.currency === 'USD' && st.usdAvgPrice ? ' ($' + st.usdAvgPrice + ')' : '')], ['현재가', st.currentPrice.toLocaleString() + '원' + (st.currency === 'USD' && st.usdCurrentPrice ? ' ($' + st.usdCurrentPrice + ')' : '')], ['매수 금액', fmt(cost)], ['평가 금액', fmt(val)], ['평가 손익', `<span style="color:${gain >= 0 ? 'var(--sup)' : 'var(--sdown)'};font-weight:700">${gain >= 0 ? '+' : '-'}${fmt(Math.abs(gain))} (${gain >= 0 ? '+' : '-'}${Math.abs(parseFloat(gp)).toFixed(2)}%)</span>`]]
             .map(([l, v]) => `<div class="info-row"><span style="color:var(--text2)">${l}</span><span>${v}</span></div>`).join('')}
     </div>`;
         onEdit = () => openAssetModal('stock', id);
